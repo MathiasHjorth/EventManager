@@ -2,11 +2,34 @@
 require 'csv'
 require 'google/apis/civicinfo_v2'
 require 'erb'
+require 'date'
+require 'time'
 
 puts 'Event Manager Initialized!'
 
 def clean_zip_code(zip_code)
   zip_code = zip_code.rjust(5, '0')[0..4]
+end
+
+def find_peak_hour_of_registration(registration_dates)
+
+  #get the hours value
+  registration_dates.map! {|elem| DateTime.strptime(elem,'%m/%d/%y %H:%M').hour}
+
+
+  hour_hash = {}
+  #count up the frequency of each hour of the day of registration in hash
+  registration_dates.each do |elem|
+    if hour_hash.include?(elem) then
+      hour_hash[elem] += 1
+    else
+      hour_hash[elem] = 1
+    end
+  end
+
+  #return the most frequent hour of registration
+  return hour_hash.key(hour_hash.values.map(&:to_i).max)
+
 end
 
 
@@ -48,6 +71,7 @@ def legislators_by_zip_code(zip_code)
 end
 
 
+
 def save_thank_you_letter(id,form_letter)
   Dir.mkdir('output') unless Dir.exist?('output')
 
@@ -68,20 +92,23 @@ csv_content = CSV.open(
 )
 template_letter = File.read("C:\\Users\\Mathias\\RubymineProjects\\EventManager\\form_letter.erb")
 erb_template = ERB.new template_letter
+registration_dates = []
 
 csv_content.each do |row|
 
   id = row[0]
   name = row[:first_name]
   phone_number = clean_phone_number(row[:homephone])
+  registration_dates.push(row[:regdate])
   zip_code = clean_zip_code(row[:zipcode].to_s)
   legislators = legislators_by_zip_code(zip_code)
 
   form_letter = erb_template.result(binding)
 
   save_thank_you_letter(id,form_letter)
-
 end
+
+puts find_peak_hour_of_registration(registration_dates)
 
 
 
